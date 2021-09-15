@@ -52,7 +52,7 @@ namespace Dii_MovieCatalogSvc
                         RequireSignedTokens = false
                     };
                 });
-
+            services.AddHealthChecks();
             services.AddControllers()
                .AddNewtonsoftJson(options =>
                options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter()));
@@ -97,6 +97,7 @@ namespace Dii_MovieCatalogSvc
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapHealthChecks("/hc");
             });
         }
     }
