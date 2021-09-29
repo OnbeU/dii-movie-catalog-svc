@@ -1,15 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using dii_MovieCatalogSvc.Data;
-using dii_MovieCatalogSvc.Features.SeedData;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.Extensions.Hosting;
 
 namespace Dii_MovieCatalogSvc
 {
@@ -62,8 +60,7 @@ namespace Dii_MovieCatalogSvc
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "MovieCatalogSvc", Version = "v1" });
             });
 
-            services.AddDbContext<MovieCatalogSvcContext>(options =>
-                    options.UseInMemoryDatabase(nameof(MovieCatalogSvcContext)));
+            services.AddSingleton<MovieCatalogSvcContext>();
 
             services.AddCors(opt =>
             {
@@ -77,9 +74,9 @@ namespace Dii_MovieCatalogSvc
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, MovieCatalogSvcContext context)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-          //  if (env.IsDevelopment())
+            if (env.IsDevelopment() || env.IsStaging())
             {
                 app.UseDeveloperExceptionPage();
                 app.UseSwagger();
@@ -91,8 +88,6 @@ namespace Dii_MovieCatalogSvc
 
             app.UseAuthentication();
             app.UseAuthorization();
-
-            DataSeeding.SeedData(context);
 
             app.UseEndpoints(endpoints =>
             {

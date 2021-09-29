@@ -1,4 +1,5 @@
 ﻿using dii_MovieCatalogSvc.Data;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,40 +14,42 @@ namespace dii_MovieCatalogSvc.Features.SeedData
         /// </summary>
         /// <param name="directory"></param>
         /// <returns></returns>
-        public static IEnumerable<string> GetJsonAssets(string directory) // e.g. "Assets.MovieMetadata"
+        public static IEnumerable<Tuple<Guid,string>> GetJsonAssets(string directory) // e.g. "Assets.MovieMetadata"
         {
-            string manifestModule = typeof(DataSeeding).Assembly.ManifestModule.ToString();      // "DiiLegacy.Data.Assets.dll"
-            string root = Path.GetFileNameWithoutExtension(manifestModule);                      // "DiiLegacy.Data"
-            string matchLeft = $"{root}.{directory}.";                              // e.g. "DiiLegacy.Data.MovieMetadata."
+            string manifestModule = typeof(DataSeeding).Assembly.ManifestModule.ToString();      // "Dii_MovieCatalogSvc.dll"
+            string root = Path.GetFileNameWithoutExtension(manifestModule);                      // "Dii_MovieCatalogSvc"
+            string matchLeft = $"{root}.{directory}.";                              // e.g. "Dii_MovieCatalogSvc.Assets.MovieMetadata."
 
-            var manifestResourceNames = typeof(DataSeeding).Assembly.GetManifestResourceNames(); // e.g. "DiiLegacy.Data.Assets.MovieMetadata.tt1520211.json", ...
+            var manifestResourceNames = typeof(DataSeeding).Assembly.GetManifestResourceNames(); // e.g. "Dii_MovieCatalogSvc.Assets.MovieMetadata.Rogue One A Star Wars Story (2016) 00000000000000000000000000000001.json", ...
             foreach (string name in manifestResourceNames.Where(n => n.StartsWith(matchLeft)))
             {
+                string last37 = name.Substring(name.Length - 37); // e.g. "00000000000000000000000000000001.json"
+                string idAsString = last37.Substring(0, 32); 
+                Guid id = Guid.Parse(idAsString);
                 using Stream stream = typeof(DataSeeding).Assembly.GetManifestResourceStream(name);
                 using StreamReader sr = new StreamReader(stream);
                 string content = sr.ReadToEnd();
-                yield return content;
+                var tuple = new Tuple<Guid, string>(id, content);
+                yield return tuple;
             }
         }
 
-        public static void SeedData(MovieCatalogSvcContext context)
+        public static IDictionary<Guid, Movie> GetSeedData()
         {
-            foreach (string json in GetJsonAssets("Assets.MovieMetadata"))
+            var movies = new Dictionary<Guid, Movie>();
+            foreach (var tuple in GetJsonAssets("Assets.MovieMetadata"))
             {
-                var movieMetadata = MovieMetadata.FromJson(json);
-                if (!context.MovieMetadatas.Any(m => m.ImdbId == movieMetadata.ImdbId))
+                Guid id = tuple.Item1;
+                var movieMetadata = MovieMetadata.FromJson(tuple.Item2);
+                var movie = new Movie
                 {
-                    var movie = new Movie
-                    {
-                        Title = movieMetadata.Title,
-                        MovieMetadata = movieMetadata
-                    };
-                    context.Add(movie);
-                    context.Add(movie.MovieMetadata);
-                }
+                    MovieId = id,
+                    Title = movieMetadata.Title,
+                    MovieMetadata = movieMetadata
+                };
+                movies[id] = movie;
             }
-
-            context.SaveChanges();
+            return movies;
         }
     }
 }
