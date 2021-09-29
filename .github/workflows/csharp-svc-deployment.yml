@@ -11,6 +11,9 @@ on:
 
 env:
   APP_NAME: Dii_MovieCatalogSvc
+  PACT_PACTICIPANT: dii-movie-catalog-svc
+  VERIFY_PROVIDER_PACT: 'false'
+
 jobs:
   build:
     name: Deployment Pipeline
@@ -25,11 +28,13 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-#   - name: 'Run Dotnet Tests'
-#     uses: OnbeUStudent/devopssetup/actions/dotnettest@master
-#     with: 
-#       PACT_BROKER_BASE_URL: ''
-#       PACT_BROKER_TOKEN: ''
+    - name: 'Run Dotnet Tests'
+      uses: OnbeUStudent/devopssetup/actions/csharptest@master
+      with: 
+        PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+        PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        PACT_PACTICIPANT: '${{ env.PACT_PACTICIPANT }}'
+        VERIFY_PROVIDER_PACT: ${{ env.VERIFY_PROVIDER_PACT}}
     
     - name: 'Build and Deploy Apps'
       id: publishapp
@@ -44,7 +49,15 @@ jobs:
         PROD_SITE_AKS_NAME: ${{ secrets.STAGE_SITE_AKS_NAME }}
         PROD_SITE_AKS_RESOURCE_GROUP: ${{ secrets.STAGE_SITE_AKS_RESOURCE_GROUP }}
         HOST_NAME: ${{ secrets.HOST_URL }}
-    
+
+    - name: 'Run Post Deployment Tasks'
+      uses: OnbeUStudent/devopssetup/actions/csharppostdeploy@master
+      with: 
+        PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+        PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+        PACT_PACTICIPANT: '${{ env.PACT_PACTICIPANT}}'
+        VERIFY_PROVIDER_PACT: ${{ env.VERIFY_PROVIDER_PACT}}
+
     - uses: actions/github-script@v4
       name: 'Create github pr comment and deployment'
       if: github.event_name == 'pull_request' && github.event.action != 'closed'
